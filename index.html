@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Wako AI Teacher</title>
+
+<style>
+html, body {
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#000;
+    overflow:hidden;
+}
+
+video {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+</style>
+
+</head>
+
+<body>
+
+<video id="wako"
+autoplay
+muted
+playsinline>
+</video>
+
+
+<script>
+
+const videos = [
+
+    // Attente
+    "videos/idle.mp4",
+
+    // Raccord attente vers écoute
+    "videos/raccord_idle_listen.mp4",
+
+    // Écoute client
+    "videos/listen.mp4",
+
+    // Raccord écoute vers réflexion
+    "videos/raccord_listen_think.mp4",
+
+    // Réflexion
+    "videos/think.mp4",
+
+    // Raccord réflexion vers réponse
+    "videos/raccord_think_speak.mp4",
+
+    // Réponse Wako (NE PAS COUPER POUR GARDER LE LIPSYNC)
+    "videos/speak2.mp4",
+    "videos/speak3.mp4",
+
+    // Fin de réponse retour attente
+    "videos/raccord_speak_idle.mp4",
+
+    // Encouragement
+    "videos/encourage.mp4",
+
+    // Passage au départ
+    "videos/raccord_encourage_goodbye.mp4",
+
+    // Au revoir
+    "videos/goodbye.mp4",
+
+    // Retour boucle
+    "videos/raccord_goodbye_idle.mp4"
+
+];
+
+
+let current = 0;
+
+const player = document.getElementById("wako");
+
+
+function playVideo(){
+
+    player.src = videos[current];
+
+    player.load();
+
+    player.play()
+    .catch(()=>{});
+
+    current++;
+
+    if(current >= videos.length){
+        current = 0;
+    }
+
+}
+
+
+player.addEventListener(
+    "ended",
+    playVideo
+);
+
+
+playVideo();
+
+
+</script>
+
+</body>
+</html>
