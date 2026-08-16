@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
 <title>Wako AI Teacher</title>
 
 <style>
+
 html, body {
     margin:0;
     padding:0;
@@ -21,96 +23,110 @@ video {
     height:100%;
     object-fit:cover;
 }
+
 </style>
 
 </head>
 
+
 <body>
+
 
 <video id="wako"
 autoplay
-muted
 playsinline>
 </video>
 
 
+
 <script>
+
 
 const videos = [
 
     // Attente
     "videos/idle.mp4",
 
-    // Raccord attente vers écoute
+    // Idle vers écoute
     "videos/raccord_idle_listen.mp4",
 
-    // Écoute client
+    // Écoute élève
     "videos/listen.mp4",
 
-    // Raccord écoute vers réflexion
+    // Écoute vers réflexion
     "videos/raccord_listen_think.mp4",
 
     // Réflexion
     "videos/think.mp4",
 
-    // Raccord réflexion vers réponse
+    // Réflexion vers réponse
     "videos/raccord_think_speak.mp4",
 
-    // Réponse Wako (NE PAS COUPER POUR GARDER LE LIPSYNC)
-    "videos/speak2.mp4",
-    "videos/speak3.mp4",
+    // Réponse Wako (lipsync conservé)
+    "videos/speak_1.mp4",
+    "videos/speak_2.mp4",
 
-    // Fin de réponse retour attente
+    // Fin réponse retour attente
     "videos/raccord_speak_idle.mp4",
 
     // Encouragement
-    "videos/encourage.mp4",
+    "videos/encourage_1.mp4",
 
-    // Passage au départ
+    // Passage au revoir
     "videos/raccord_encourage_goodbye.mp4",
 
-    // Au revoir
+    // Goodbye
     "videos/goodbye.mp4",
 
-    // Retour boucle
+    // Retour idle
     "videos/raccord_goodbye_idle.mp4"
 
 ];
 
 
-let current = 0;
+
+let index = 0;
 
 const player = document.getElementById("wako");
 
 
-function playVideo(){
 
-    player.src = videos[current];
+function playNext(){
+
+    player.src = videos[index];
 
     player.load();
 
     player.play()
-    .catch(()=>{});
+    .catch(function(){});
 
-    current++;
 
-    if(current >= videos.length){
-        current = 0;
+    index++;
+
+
+    if(index >= videos.length){
+
+        index = 0;
+
     }
 
 }
 
 
+
 player.addEventListener(
-    "ended",
-    playVideo
+"ended",
+playNext
 );
 
 
-playVideo();
+
+playNext();
 
 
 </script>
 
+
 </body>
+
 </html>
