@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wako — Professeure virtuelle | Cours FR & Langues</title>
+<title>Wako — Professeure virtuelle</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;background:#07111f;font-family:Arial,Helvetica,sans-serif;color:#fff}
@@ -16,7 +16,7 @@ body{min-height:100vh}
 .panel{background:#0b1a2b;border:1px solid rgba(156,179,215,.22);border-radius:24px;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,.28)}
 
 .videoBox{position:relative;height:610px;background:#101827;overflow:hidden}
-.teacherVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1 !important;transition:none !important}
+.teacherVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .18s ease}
 .teacherVideo.active{opacity:1}
 .videoShade{position:absolute;inset:0;background:linear-gradient(to top,rgba(3,9,17,.55),transparent 40%);pointer-events:none}
 .badge{position:absolute;top:17px;left:17px;background:rgba(10,22,37,.82);border:1px solid rgba(255,255,255,.12);padding:9px 12px;border-radius:14px;font-weight:700}
@@ -299,10 +299,8 @@ body{min-height:100vh}
   <div class="layout">
     <section class="panel">
       <div class="videoBox">
-        <video id="vWait" class="teacherVideo active"
-          autoplay muted loop playsinline webkit-playsinline preload="auto"
-          src="https://raw.githubusercontent.com/babufrance/wako-ai-teacher/main/WAKO_LIVE_TEACHER_10MIN_GITHUB.mp4">
-        </video>
+        <video id="vWait" class="teacherVideo active" muted playsinline preload="auto"
+          src="https://raw.githubusercontent.com/babufrance/wako-ai-teacher/main/WAKO_LIVE_TEACHER_10MIN_GITHUB.mp4"></video>
 
         <div class="videoShade"></div>
         <div class="badge">👩‍🏫 Wako</div>
@@ -364,8 +362,8 @@ body{min-height:100vh}
 <script>
 (function(){
   const waitV=document.getElementById("vWait");
-  const listenV=null;
-  const speakV=null;
+  const listenV=waitV;
+  const speakV=waitV;
   const mic=document.getElementById("mic");
   const input=document.getElementById("question");
   const send=document.getElementById("send");
@@ -374,51 +372,183 @@ body{min-height:100vh}
   const state=document.getElementById("state");
   const voiceSelect=document.getElementById("voice");
 
+  const videos={wait:waitV};
+  let current="wait";
+
   // =========================================================
-  // WAKO LIVE TEACHER — UNE SEULE VIDEO CONTINUE
-  // La vidéo démarre dès l'ouverture et ne change JAMAIS
-  // quand l'élève parle, quand Wako réfléchit ou quand elle répond.
+  // BOUCLE VIDEO SANS BLANC
+  // Deux copies du même clip se chevauchent.
+  // La deuxième démarre AVANT la fin de la première,
+  // puis elles se fondent l'une dans l'autre.
   // =========================================================
 
-  const liveVideo = waitV;
+  const videoBox=document.querySelector(".videoBox");
+  const pairs={};
 
-  if(liveVideo){
-    liveVideo.muted = true;
-    liveVideo.loop = true;
-    liveVideo.playsInline = true;
-    liveVideo.setAttribute("playsinline","");
-    liveVideo.setAttribute("webkit-playsinline","");
-    liveVideo.preload = "auto";
+  function makeTwin(original,name){
+    original.loop=false;
+    original.removeAttribute("loop");
+    original.muted=true;
+    original.playsInline=true;
+    original.preload="auto";
 
-    const startLiveVideo = () => {
-      const p = liveVideo.play();
-      if(p && p.catch) p.catch(()=>{});
-    };
+    const twin=original.cloneNode(true);
+    twin.removeAttribute("id");
+    twin.classList.remove("active");
+    twin.dataset.twin=name;
+    twin.loop=false;
+    twin.removeAttribute("loop");
+    twin.muted=true;
+    twin.playsInline=true;
+    twin.preload="auto";
+    twin.style.opacity="0";
+    twin.style.pointerEvents="none";
 
-    if(liveVideo.readyState >= 2){
-      startLiveVideo();
-    }else{
-      liveVideo.addEventListener("canplay", startLiveVideo, {once:true});
-    }
+    videoBox.insertBefore(twin, original.nextSibling);
 
-    // Sécurité iPhone/Android si l'autoplay est momentanément bloqué.
-    document.addEventListener("touchstart", startLiveVideo, {once:true, passive:true});
-    document.addEventListener("click", startLiveVideo, {once:true});
-    window.addEventListener("pageshow", startLiveVideo);
-    document.addEventListener("visibilitychange", ()=>{
-      if(!document.hidden) startLiveVideo();
+    // Transition un peu plus longue pour cacher totalement
+    // la coupure de décodage entre fin et début du MP4.
+    original.style.transition="opacity .22s linear, transform 5s ease-in-out";
+    twin.style.transition="opacity .22s linear, transform 5s ease-in-out";
+
+    return [original,twin];
+  }
+
+  Object.entries(videos).forEach(([name,v])=>{
+    pairs[name]=makeTwin(v,name);
+  });
+
+  const pairState={
+    wait:{front:0,switching:false},
+    listen:{front:0,switching:false},
+    speak:{front:0,switching:false}
+  };
+
+  function safePlay(v){
+    const p=v.play();
+    if(p && p.catch) p.catch(()=>{});
+  }
+
+  function stopPair(name){
+    const [a,b]=pairs[name];
+    [a,b].forEach(v=>{
+      try{v.pause();}catch(e){}
+      v.style.opacity="0";
+      v.classList.remove("active");
     });
+    pairState[name].front=0;
+    pairState[name].switching=false;
   }
 
-  // Conservé pour le reste du cerveau Wako :
-  // les états changent le texte/voix, MAIS JAMAIS la vidéo.
-  function setVideo(name){
-    if(!liveVideo) return;
-    if(liveVideo.paused){
-      const p=liveVideo.play();
-      if(p && p.catch) p.catch(()=>{});
-    }
+  function startPair(name){
+    const [a,b]=pairs[name];
+    const s=pairState[name];
+
+    s.front=0;
+    s.switching=false;
+
+    try{
+      a.currentTime=0;
+      b.currentTime=0;
+    }catch(e){}
+
+    a.style.opacity="1";
+    b.style.opacity="0";
+    a.classList.add("active");
+    b.classList.remove("active");
+
+    safePlay(a);
+    // Charge aussi la seconde copie immédiatement.
+    try{b.load();}catch(e){}
   }
+
+  function crossfade(name){
+    if(current!==name) return;
+
+    const pair=pairs[name];
+    const s=pairState[name];
+    if(s.switching) return;
+
+    const oldIndex=s.front;
+    const newIndex=oldIndex===0 ? 1 : 0;
+    const oldV=pair[oldIndex];
+    const newV=pair[newIndex];
+
+    s.switching=true;
+
+    try{newV.currentTime=0;}catch(e){}
+    newV.style.opacity="0";
+    safePlay(newV);
+
+    // On attend quelques millisecondes que la première frame
+    // de la copie suivante soit réellement décodée.
+    setTimeout(()=>{
+      if(current!==name){
+        s.switching=false;
+        return;
+      }
+
+      newV.style.opacity="1";
+      oldV.style.opacity="0";
+
+      setTimeout(()=>{
+        try{
+          oldV.pause();
+          oldV.currentTime=0;
+        }catch(e){}
+
+        s.front=newIndex;
+        s.switching=false;
+      },240);
+    },35);
+  }
+
+  Object.entries(pairs).forEach(([name,pair])=>{
+    pair.forEach(v=>{
+      v.addEventListener("timeupdate",()=>{
+        if(current!==name) return;
+
+        // Commence la copie suivante environ 0,30 s avant la fin.
+        // Ainsi le navigateur n'a jamais à afficher une frame vide.
+        if(
+          v.duration &&
+          Number.isFinite(v.duration) &&
+          (v.duration-v.currentTime)<0.32 &&
+          pairState[name].front===pair.indexOf(v)
+        ){
+          crossfade(name);
+        }
+      });
+
+      // Sécurité pour les mobiles qui déclenchent ended
+      // avant le dernier timeupdate.
+      v.addEventListener("ended",()=>{
+        if(current===name) crossfade(name);
+      });
+    });
+  });
+
+  function setVideo(name){
+    if(!pairs[name]) return;
+
+    if(current===name){
+      const pair=pairs[name];
+      const front=pair[pairState[name].front];
+      if(front.paused) safePlay(front);
+      return;
+    }
+
+    Object.keys(pairs).forEach(key=>{
+      if(key!==name) stopPair(key);
+    });
+
+    current=name;
+    startPair(name);
+  }
+
+  // Force le démarrage initial sans dépendre de l'ancien état.
+  current="";
+  setVideo("wait");
 
   function addMessage(text,type){
     const d=document.createElement("div");
